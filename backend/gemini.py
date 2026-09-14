@@ -1,8 +1,14 @@
 import os
 
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+
 from security import require_api_key, MAX_TEXT_CHARS
+
+
+ENV_FILE = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(ENV_FILE)
 
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
