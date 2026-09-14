@@ -117,22 +117,33 @@
 </div>
 
 <div id="transferModal" class="modal hidden" aria-hidden="true">
-  <div class="action-menu-card transfer-card">
+  <div class="action-menu-card transfer-card qr-transfer-card">
     <button class="modal-close" id="closeTransferModal" aria-label="إغلاق">×</button>
-    <div class="modal-title"><div class="mini-logo">⇄</div><div><h2>النقل المباشر</h2><p>انقل محادثاتك مباشرة بين جهازين عبر اتصال نظير إلى نظير.</p></div></div>
+    <div class="modal-title"><div class="mini-logo">⇄</div><div><h2>النقل المباشر</h2><p>انقل محادثاتك بين جهازين باستخدام QR Code، بدون حساب أو قاعدة بيانات.</p></div></div>
     <div class="transfer-choice" id="transferChoice">
-      <button class="backup-choice-btn" id="transferSendBtn"><b>📤 إرسال المحادثات</b><small>هذا الجهاز سيرسل نسخة محادثاتك إلى الجهاز الآخر.</small></button>
-      <button class="backup-choice-btn" id="transferReceiveBtn"><b>📥 استقبال المحادثات</b><small>هذا الجهاز سيستقبل النسخة من الجهاز الآخر.</small></button>
+      <button class="backup-choice-btn" id="transferSendBtn"><b>📤 إرسال إلى جهاز آخر</b><small>سيظهر QR متحرك على هذا الجهاز.</small></button>
+      <button class="backup-choice-btn" id="transferReceiveBtn"><b>📷 استقبال من جهاز آخر</b><small>افتح الكاميرا ووجّهها إلى QR الظاهر على الجهاز الآخر.</small></button>
     </div>
-    <div id="transferPanel" class="hidden">
-      <div class="transfer-status" id="transferStatus">جاهز</div>
-      <label class="transfer-label">الكود</label>
-      <textarea id="transferCode" class="transfer-code" rows="7" placeholder="سيظهر الكود هنا أو الصقه هنا…"></textarea>
-      <div class="settings-actions"><button class="primary-btn" id="transferPrimaryBtn">متابعة</button><button class="ghost-btn" id="transferCopyBtn">نسخ الكود</button></div>
-      <button class="transfer-back" id="transferBackBtn">← رجوع</button>
+    <div id="transferSendPanel" class="hidden qr-panel">
+      <div class="transfer-status" id="transferSendStatus">جاري تجهيز المحادثات…</div>
+      <div class="qr-box"><canvas id="transferQrCanvas" width="360" height="360"></canvas></div>
+      <div class="transfer-progress"><div id="transferProgressBar"></div></div>
+      <div class="transfer-status compact" id="transferProgressText">0 / 0</div>
+      <p class="transfer-hint">اترك الشاشة مفتوحة ووجّه كاميرا الجهاز الآخر إلى رمز QR.</p>
+      <button class="transfer-back" id="transferSendStopBtn">إيقاف النقل والعودة</button>
+    </div>
+    <div id="transferReceivePanel" class="hidden qr-panel">
+      <div class="transfer-status" id="transferReceiveStatus">اضغط تشغيل الكاميرا ثم وجّهها إلى QR.</div>
+      <div class="camera-box"><video id="transferVideo" autoplay playsinline muted></video><div class="scan-frame"></div></div>
+      <canvas id="transferScanCanvas" class="hidden"></canvas>
+      <div class="transfer-progress"><div id="transferReceiveProgressBar"></div></div>
+      <div class="transfer-status compact" id="transferReceiveProgressText">0 / 0</div>
+      <div class="settings-actions"><button class="primary-btn" id="transferStartScanBtn">📷 تشغيل الكاميرا</button><button class="ghost-btn" id="transferStopScanBtn">إيقاف</button></div>
+      <button class="transfer-back" id="transferReceiveBackBtn">← رجوع</button>
     </div>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
 <script src="config.js"></script>
 <script src="database.js"></script>
 <script src="backup.js"></script>

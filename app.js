@@ -140,12 +140,39 @@ $('#menuDeleteBtn').onclick=async()=>{if(!state.menuConversation)return;const id
 $$('.suggestions button').forEach(b=>b.onclick=()=>{$('#promptInput').value=b.dataset.prompt;resize();$('#promptInput').focus();});
 
 let transferMode='';
-function openTransfer(){ $('#transferModal').classList.remove('hidden'); $('#transferModal').setAttribute('aria-hidden','false'); $('#transferChoice').classList.remove('hidden'); $('#transferPanel').classList.add('hidden'); ZomaTransfer.close(); }
-function closeTransfer(){ $('#transferModal').classList.add('hidden'); $('#transferModal').setAttribute('aria-hidden','true'); ZomaTransfer.close(); }
-function transferState(v){const m={connected:'تم الاتصال مباشرة بالجهاز الآخر.',closed:'تم إغلاق الاتصال.',error:'حدث خطأ في الاتصال.',invalid:'البيانات المستلمة غير صالحة.'};$('#transferStatus').textContent=m[v]||v;}
-window.__zomaTransferOnState=transferState;
-window.__zomaTransferOnData=async data=>{try{await ZomaDB.importAll(data);state.conversation=null;$('#messages').innerHTML='';$('#welcome').classList.remove('hidden');await loadConversations();toast('تم استقبال المحادثات بنجاح');transferState('تم استقبال البيانات.');}catch(e){toast(e.message||'فشل استقبال المحادثات');}};
-function showTransferPanel(mode){transferMode=mode;$('#transferChoice').classList.add('hidden');$('#transferPanel').classList.remove('hidden');$('#transferCode').value='';$('#transferCopyBtn').classList.toggle('hidden',mode==='send');$('#transferPrimaryBtn').textContent=mode==='send'?'إنشاء كود الإرسال':'إنشاء كود الاستقبال';$('#transferStatus').textContent=mode==='send'?'اضغط إنشاء كود الإرسال.':'الصق كود الإرسال ثم اضغط إنشاء كود الاستقبال.';}
-async function transferPrimary(){const code=$('#transferCode').value.trim();try{if(transferMode==='send'){if(!code){const offer=await ZomaTransfer.createOffer();$('#transferCode').value=offer;$('#transferStatus').textContent='انسخ الكود وأرسله للجهاز الآخر. بعد أن يعطيك كود الاستجابة، الصقه هنا ثم اضغط اتصال.';$('#transferPrimaryBtn').textContent='اتصال';$('#transferCopyBtn').classList.remove('hidden');}else{await ZomaTransfer.acceptAnswer(code);$('#transferStatus').textContent='في انتظار اتصال الجهاز الآخر…';setTimeout(async()=>{try{await ZomaTransfer.send(await ZomaDB.exportAll());toast('تم إرسال المحادثات مباشرة');}catch(e){toast(e.message||'فشل الإرسال');}},1200);}}else{if(!code)return toast('الصق كود الإرسال أولًا');const answer=await ZomaTransfer.acceptOffer(code);$('#transferCode').value=answer;$('#transferStatus').textContent='أرسل كود الاستجابة للجهاز المرسل، ثم انتظر الاستقبال.';$('#transferPrimaryBtn').textContent='انتظار الاستقبال';$('#transferCopyBtn').classList.remove('hidden');}}catch(e){toast('كود غير صالح أو تعذر الاتصال');}}
-$('#transferBtn').onclick=openTransfer;$('#closeTransferModal').onclick=closeTransfer;$('#transferSendBtn').onclick=()=>showTransferPanel('send');$('#transferReceiveBtn').onclick=()=>showTransferPanel('receive');$('#transferPrimaryBtn').onclick=transferPrimary;$('#transferCopyBtn').onclick=()=>navigator.clipboard?.writeText($('#transferCode').value).then(()=>toast('تم نسخ الكود')).catch(()=>toast('تعذر النسخ'));$('#transferBackBtn').onclick=()=>{ZomaTransfer.close();$('#transferChoice').classList.remove('hidden');$('#transferPanel').classList.add('hidden');};
+function openTransfer(){
+  ZomaTransfer.close();
+  $('#transferModal').classList.remove('hidden'); $('#transferModal').setAttribute('aria-hidden','false');
+  $('#transferChoice').classList.remove('hidden'); $('#transferSendPanel').classList.add('hidden'); $('#transferReceivePanel').classList.add('hidden');
+}
+function closeTransfer(){ ZomaTransfer.close(); $('#transferModal').classList.add('hidden'); $('#transferModal').setAttribute('aria-hidden','true'); }
+async function startTransferSend(){
+  transferMode='send'; $('#transferChoice').classList.add('hidden'); $('#transferSendPanel').classList.remove('hidden');
+  $('#transferSendStatus').textContent='جاري تجهيز المحادثات…';
+  try{
+    const data=await ZomaDB.exportAll();
+    const meta=await ZomaTransfer.startSender(data);
+    $('#transferSendStatus').textContent='جاهز للإرسال — امسح رمز QR من الجهاز الآخر.';
+    $('#transferProgressText').textContent=`1 / ${meta.total}`;
+  }catch(e){ $('#transferSendStatus').textContent=e.message||'تعذر تجهيز النقل.'; toast(e.message||'تعذر تجهيز النقل'); }
+}
+async function startTransferReceive(){
+  transferMode='receive'; $('#transferChoice').classList.add('hidden'); $('#transferReceivePanel').classList.remove('hidden');
+  $('#transferReceiveStatus').textContent='اضغط تشغيل الكاميرا ثم وجّهها إلى QR.';
+  $('#transferReceiveProgressText').textContent='0 / 0'; $('#transferReceiveProgressBar').style.width='0%';
+}
+window.__zomaTransferOnData=async data=>{
+  try{
+    await ZomaDB.importAll(data); state.conversation=null; $('#messages').innerHTML=''; $('#welcome').classList.remove('hidden');
+    await loadConversations(); toast('تم استقبال المحادثات بنجاح');
+  }catch(e){ toast(e.message||'فشل استقبال المحادثات'); }
+};
+$('#transferBtn').onclick=openTransfer;
+$('#closeTransferModal').onclick=closeTransfer;
+$('#transferSendBtn').onclick=startTransferSend;
+$('#transferReceiveBtn').onclick=startTransferReceive;
+$('#transferSendStopBtn').onclick=()=>{ZomaTransfer.close();openTransfer();};
+$('#transferReceiveBackBtn').onclick=()=>{ZomaTransfer.close();openTransfer();};
+$('#transferStartScanBtn').onclick=async()=>{try{await ZomaTransfer.startReceiver();$('#transferReceiveStatus').textContent='الكاميرا تعمل… وجّهها إلى رمز QR.';}catch(e){$('#transferReceiveStatus').textContent=e.message||'تعذر تشغيل الكاميرا.';toast(e.message||'تعذر تشغيل الكاميرا');}};
+$('#transferStopScanBtn').onclick=()=>{ZomaTransfer.stopCamera();$('#transferReceiveStatus').textContent='تم إيقاف الكاميرا.';};
 (async()=>{loadSettings();try{await ZomaDB.requestPersistence();}catch{}await loadConversations();const list=await ZomaDB.listConversations();if(list[0])await openConversation(list[0].id);})();
