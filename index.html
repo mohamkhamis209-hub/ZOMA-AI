@@ -21,6 +21,7 @@
     <div id="conversationList" class="conversation-list"></div>
     <div class="sidebar-bottom">
       <button class="side-btn" id="backupBtn"><span>↥</span> النسخ الاحتياطي</button>
+      <button class="side-btn" id="transferBtn"><span>⇄</span> النقل المباشر</button>
       <label class="side-btn file-label"><span>↧</span> استعادة نسخة<input id="restoreInput" type="file" accept=".zoma,application/octet-stream,application/json"></label>
       <button class="side-btn" id="settingsBtn"><span>⚙</span> الإعدادات</button>
     </div>
@@ -29,7 +30,7 @@
   <main class="main">
     <header class="topbar">
       <button class="icon-btn mobile-only" id="menuBtn" aria-label="القائمة">☰</button>
-      <div class="model-pill"><span class="status-dot" id="statusDot"></span><div><b>ZOMA AI</b><small id="modelName">Gemini</small></div></div>
+      <div class="model-pill"><span class="status-dot" id="statusDot"></span><div><b>ZOMA AI</b></div></div>
       <div class="top-actions">
         <button class="icon-btn" id="clearBtn" title="حذف المحادثة الحالية" aria-label="حذف المحادثة">⌫</button>
       </div>
@@ -54,13 +55,45 @@
     <footer class="composer-area">
       <div id="attachmentPreview" class="attachment-preview hidden"></div>
       <form id="composer" class="composer">
-        <label class="attach-btn" title="إرفاق صورة" aria-label="إرفاق صورة">＋<input id="imageInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+        <label class="attach-btn" title="إرفاق صورة أو ملف" aria-label="إرفاق صورة أو ملف">＋<input id="imageInput" type="file" accept="image/*,.pdf,.txt,.md,.json,.csv,.doc,.docx"></label>
         <textarea id="promptInput" rows="1" maxlength="30000" placeholder="اكتب رسالتك إلى ZOMA AI…" aria-label="رسالتك"></textarea>
         <button id="sendBtn" class="send-btn" type="submit" aria-label="إرسال">➤</button>
       </form>
       <div class="composer-note">قد يخطئ الذكاء الاصطناعي أحيانًا. راجع المعلومات المهمة قبل الاعتماد عليها.</div>
     </footer>
   </main>
+</div>
+
+<div id="conversationMenu" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card">
+    <button class="modal-close" id="closeConversationMenu" aria-label="إغلاق">×</button>
+    <h3 id="conversationMenuTitle">خيارات المحادثة</h3>
+    <div class="action-menu-buttons">
+      <button id="menuPinBtn" class="action-btn">★ <span>تثبيت المحادثة</span></button>
+      <button id="menuDeleteBtn" class="action-btn danger">⌫ <span>حذف المحادثة</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="backupModal" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card backup-card">
+    <button class="modal-close" id="closeBackupModal" aria-label="إغلاق">×</button>
+    <div class="modal-title"><div class="mini-logo">Z</div><div><h2>النسخ الاحتياطي</h2><p>اختر طريقة حفظ نسخة محادثاتك.</p></div></div>
+    <div class="backup-choice">
+      <button id="backupPasswordBtn" class="backup-choice-btn"><b>🔐 إدخال كلمة مرور</b><small>تشفير النسخة قبل حفظها.</small></button>
+      <button id="backupPlainBtn" class="backup-choice-btn"><b>📥 بدون كلمة مرور</b><small>حفظ النسخة مباشرة بدون تشفير.</small></button>
+    </div>
+  </div>
+</div>
+
+<div id="passwordModal" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card">
+    <button class="modal-close" id="closePasswordModal" aria-label="إغلاق">×</button>
+    <h3>كلمة مرور النسخة الاحتياطية</h3>
+    <p class="modal-help">أدخل كلمة مرور لحماية النسخة ثم اضغط حفظ.</p>
+    <input id="backupPasswordInput" class="backup-password-input" type="password" autocomplete="new-password" placeholder="كلمة المرور">
+    <div class="settings-actions"><button class="primary-btn" id="savePasswordBackup">حفظ</button><button class="ghost-btn" id="cancelPasswordBackup">إلغاء</button></div>
+  </div>
 </div>
 
 <div id="toast" class="toast" role="status"></div>
@@ -78,16 +111,28 @@
       <button class="setting-row" id="localSaveRow"><span><b>حفظ المحادثات محليًا</b><small>تُحفظ على هذا الجهاز والمتصفح فقط.</small></span><span class="switch" id="localSwitch"><i></i></span></button>
       <div class="storage-note"><span>🛡️</span><div><b>خصوصيتك أولًا</b><p>المحادثات لا تُرسل إلى قاعدة بيانات ZOMA. استخدم النسخ الاحتياطي عند تغيير الجهاز.</p></div></div>
     </div>
-    <div class="settings-section technical">
-      <h3>الاتصال</h3>
-      <div class="server-box"><span>الخادم</span><code id="serverDisplay">—</code><span class="server-ok" id="serverStatus">غير متصل</span></div>
-      <p class="small-note">عنوان الخادم محفوظ داخل إعدادات التطبيق وليس مكانًا لمفتاح Gemini. مفتاح Gemini موجود على الخادم فقط.</p>
-    </div>
-    <div class="settings-actions"><button class="ghost-btn" id="checkServerBtn">اختبار الاتصال</button><button class="primary-btn" id="saveSettings">حفظ وإغلاق</button></div>
+    <div class="settings-actions"><button class="primary-btn" id="saveSettings">حفظ وإغلاق</button></div>
     <div class="version">ZOMA AI • الإصدار 1.0</div>
   </div>
 </div>
 
+<div id="transferModal" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card transfer-card">
+    <button class="modal-close" id="closeTransferModal" aria-label="إغلاق">×</button>
+    <div class="modal-title"><div class="mini-logo">⇄</div><div><h2>النقل المباشر</h2><p>انقل محادثاتك مباشرة بين جهازين عبر اتصال نظير إلى نظير.</p></div></div>
+    <div class="transfer-choice" id="transferChoice">
+      <button class="backup-choice-btn" id="transferSendBtn"><b>📤 إرسال المحادثات</b><small>هذا الجهاز سيرسل نسخة محادثاتك إلى الجهاز الآخر.</small></button>
+      <button class="backup-choice-btn" id="transferReceiveBtn"><b>📥 استقبال المحادثات</b><small>هذا الجهاز سيستقبل النسخة من الجهاز الآخر.</small></button>
+    </div>
+    <div id="transferPanel" class="hidden">
+      <div class="transfer-status" id="transferStatus">جاهز</div>
+      <label class="transfer-label">الكود</label>
+      <textarea id="transferCode" class="transfer-code" rows="7" placeholder="سيظهر الكود هنا أو الصقه هنا…"></textarea>
+      <div class="settings-actions"><button class="primary-btn" id="transferPrimaryBtn">متابعة</button><button class="ghost-btn" id="transferCopyBtn">نسخ الكود</button></div>
+      <button class="transfer-back" id="transferBackBtn">← رجوع</button>
+    </div>
+  </div>
+</div>
 <script src="config.js"></script>
 <script src="database.js"></script>
 <script src="backup.js"></script>

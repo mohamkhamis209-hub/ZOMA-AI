@@ -6,9 +6,8 @@ const ZomaBackup = (() => {
   }
   function b64(buf) { let s=''; for (const b of new Uint8Array(buf)) s += String.fromCharCode(b); return btoa(s); }
   function unb64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
-  async function download() {
+  async function download(password='') {
     const data = JSON.stringify(await ZomaDB.exportAll());
-    const password = prompt('اختياري: أدخل كلمة مرور لتشفير النسخة، أو اضغط إلغاء لنسخة غير مشفرة.');
     let out;
     if (password) {
       const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
