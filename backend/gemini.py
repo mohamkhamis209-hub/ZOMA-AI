@@ -6,10 +6,14 @@ from google.genai import types
 
 from security import require_api_key, MAX_TEXT_CHARS
 
-# تحميل متغيرات البيئة من ملف .env
-load_dotenv()
+
+# تحميل ملف .env من نفس مجلد هذا الملف بشكل صريح
+ENV_FILE = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(ENV_FILE)
+
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+
 
 SYSTEM_INSTRUCTION = """You are ZOMA AI, a helpful general-purpose AI assistant.
 Answer clearly and naturally. Match the user's language; if the user writes Arabic, answer in Arabic.
@@ -24,6 +28,7 @@ def _client():
 
 def chat(messages: list[dict]) -> str:
     client = _client()
+
     contents = []
 
     for item in messages[-40:]:
@@ -36,7 +41,9 @@ def chat(messages: list[dict]) -> str:
         contents.append(
             types.Content(
                 role="user" if role == "user" else "model",
-                parts=[types.Part.from_text(text=text)]
+                parts=[
+                    types.Part.from_text(text=text)
+                ],
             )
         )
 
@@ -57,3 +64,4 @@ def chat(messages: list[dict]) -> str:
         (response.text or "").strip()
         or "لم أستطع توليد رد الآن. حاول مرة أخرى."
     )
+    
