@@ -53,8 +53,11 @@ def api_chat(payload: ChatRequest):
     except HTTPException:
         raise
     except Exception as exc:
-        # Do not leak provider credentials or internal tracebacks to the browser.
-        raise HTTPException(status_code=502, detail="تعذر الاتصال بخدمة الذكاء الاصطناعي الآن. تأكد من المفتاح ثم حاول مرة أخرى.") from exc
+    print("ZOMA CHAT ERROR:", repr(exc), flush=True)
+    raise HTTPException(
+        status_code=502,
+        detail=f"ZOMA CHAT ERROR: {type(exc).__name__}: {exc}"
+    ) from exc
 
 @app.post("/api/analyze-image")
 async def analyze_image(file: UploadFile = File(...), prompt: str = Form("حلل الصورة واشرحها بالتفصيل وبالعربية.")):
