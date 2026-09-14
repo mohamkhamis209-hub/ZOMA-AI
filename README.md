@@ -1,40 +1,15 @@
-# ZOMA AI – Final Tools Update
+# ZOMA AI
 
-This build keeps the existing conversation transfer/restore system and adds:
+نسخة جاهزة للرفع على GitHub Pages مع Backend على PythonAnywhere.
 
-- Create PDF, Word, Excel and ZIP files from a prompt.
-- Save generated files inside the current conversation and export/restore them with the conversation.
-- Generate images from text.
-- Edit an uploaded image from a text instruction.
-- Download generated images/files from the conversation.
-- Existing image/file analysis remains available.
+## Frontend
+- عدّل `config.js` فقط إذا تغيّر عنوان الـBackend.
+- لا تضع مفتاح Gemini في أي ملف Frontend.
 
-## Backend update
+## Backend
+- ضع `GEMINI_API_KEY` داخل `backend/.env` على السيرفر فقط.
+- حافظ على Proxy الخاص بـPythonAnywhere للحسابات التي تحتاجه.
+- `ALLOWED_ORIGINS` يجب أن يتضمن `https://mohamkhamis209-hub.github.io`.
 
-Upload the files inside `backend/` to:
-
-`/home/mohamkhamis209/ZOMA-AI/backend/`
-
-Then in the PythonAnywhere virtualenv run:
-
-`pip install -r /home/mohamkhamis209/ZOMA-AI/backend/requirements.txt`
-
-Then go to Web and click Reload.
-
-The image model defaults to `gemini-3.1-flash-image`. You can override it in `.env` with:
-
-`ZOMA_IMAGE_MODEL=gemini-3.1-flash-image`
-
-The Gemini API key remains in `.env` as `GEMINI_API_KEY=...`.
-
-## New API endpoints
-
-- `POST /api/create-file`
-- `POST /api/generate-image`
-
-Existing endpoints are unchanged:
-
-- `POST /api/chat`
-- `POST /api/analyze-file`
-- `POST /api/transfer/create`
-- `POST /api/transfer/receive`
+## البيانات
+المحادثات محفوظة محليًا في IndexedDB. النسخ الاحتياطي `.zoma` يدعم التشفير بكلمة مرور.
