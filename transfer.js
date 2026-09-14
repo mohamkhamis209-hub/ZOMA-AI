@@ -119,16 +119,18 @@ const ZomaTransfer = (() => {
   }
   async function startReceiver(){
     close();
-    if(!('BarcodeDetector' in window)) throw new Error('المتصفح لا يدعم قراءة QR بالكاميرا. استخدم Chrome أو Edge محدث.');
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error('المتصفح لا يسمح بتشغيل الكاميرا. افتح الموقع عبر HTTPS.');
     stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
     const video=document.getElementById('transferVideo'); video.srcObject=stream; await video.play();
-    const detector=new BarcodeDetector({formats:['qr_code']});
+    const detector=('BarcodeDetector' in window)?new BarcodeDetector({formats:['qr_code']}):null;
     const canvas=document.getElementById('transferScanCanvas'); const ctx=canvas.getContext('2d',{willReadFrequently:true});
     const scan=async()=>{
       if(!stream||video.readyState<2){scanTimer=requestAnimationFrame(scan);return;}
       try{
-        const codes=await detector.detect(video);
-        for(const code of codes){ if(code.rawValue){ await handleFrame(code.rawValue); break; } }
+        let value='';
+        if(detector){const codes=await detector.detect(video);value=codes[0]?.rawValue||'';}
+        else {canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;ctx.drawImage(video,0,0,canvas.width,canvas.height);const img=ctx.getImageData(0,0,canvas.width,canvas.height);const code=window.jsQR?.(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});value=code?.data||'';}
+        if(value) await handleFrame(value);
       }catch{}
       if(stream) scanTimer=requestAnimationFrame(scan);
     };

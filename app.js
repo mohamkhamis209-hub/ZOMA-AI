@@ -62,17 +62,16 @@ function setLocalSave(on){state.settings.localSave=on;$('#localSwitch').classLis
 function loadSettings(){try{const s=JSON.parse(localStorage.getItem('zoma_settings'));if(s)state.settings={...state.settings,...s};}catch{};if(!state.settings.apiBase)state.settings.apiBase=window.ZOMA_CONFIG?.API_BASE_URL||'';setTheme(state.settings.dark);setLocalSave(state.settings.localSave);}
 function saveSettings(){localStorage.setItem('zoma_settings',JSON.stringify({localSave:state.settings.localSave,dark:state.settings.dark}));$('#settingsModal').classList.add('hidden');$('#settingsModal').setAttribute('aria-hidden','true');toast('تم حفظ الإعدادات');}
 async function ensureChat(){if(!state.conversation)await newChat();}
-function resize(){const e=$('#promptInput');e.style.height='auto';e.style.height=Math.min(e.scrollHeight,180)+'px';}
-function setTheme(dark){state.settings.dark=dark;document.documentElement.dataset.theme=dark?'dark':'light';$('#themeToggle .switch').classList.toggle('on',dark);}
-function setLocalSave(on){state.settings.localSave=on;$('#localSwitch').classList.toggle('on',on);}
-function loadSettings(){try{const s=JSON.parse(localStorage.getItem('zoma_settings'));if(s)state.settings={...state.settings,...s};}catch{};if(!state.settings.apiBase)state.settings.apiBase=window.ZOMA_CONFIG?.API_BASE_URL||'';setTheme(state.settings.dark);setLocalSave(state.settings.localSave);$('#serverDisplay').textContent=state.settings.apiBase||'غير محدد';}
-function saveSettings(){state.settings.apiBase=state.settings.apiBase.replace(/\/$/,'');localStorage.setItem('zoma_settings',JSON.stringify(state.settings));$('#settingsModal').classList.add('hidden');$('#settingsModal').setAttribute('aria-hidden','true');toast('تم حفظ الإعدادات');}
-async function checkServer(){const b=$('#checkServerBtn');b.disabled=true;b.textContent='جاري الاختبار…';try{const r=await fetch(state.settings.apiBase+'/api/health',{cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.detail||'فشل الاتصال');$('#serverStatus').textContent=`متصل • ${j.model||'Gemini'}`;$('#serverStatus').classList.add('good');$('#statusDot').classList.add('online');$('#modelName').textContent=j.model||'Gemini';toast('الخادم يعمل بنجاح');}catch(e){$('#serverStatus').textContent='تعذر الاتصال';$('#serverStatus').classList.remove('good');$('#statusDot').classList.remove('online');toast('تعذر الاتصال بالخادم');}finally{b.disabled=false;b.textContent='اختبار الاتصال';}}
+function resize(){const e=$('#promptInput');if(!e)return;e.style.height='auto';e.style.height=Math.min(e.scrollHeight,180)+'px';}
+function setTheme(dark){state.settings.dark=dark;document.documentElement.dataset.theme=dark?'dark':'light';const x=$('#themeToggle .switch');if(x)x.classList.toggle('on',dark);}
+function setLocalSave(on){state.settings.localSave=on;const x=$('#localSwitch');if(x)x.classList.toggle('on',on);}
+function loadSettings(){try{const raw=localStorage.getItem('zoma_settings');if(raw)state.settings={...state.settings,...JSON.parse(raw)};}catch{};setTheme(state.settings.dark);setLocalSave(state.settings.localSave);}
+function saveSettings(){localStorage.setItem('zoma_settings',JSON.stringify({localSave:state.settings.localSave,dark:state.settings.dark}));$('#settingsModal').classList.add('hidden');$('#settingsModal').setAttribute('aria-hidden','true');toast('تم حفظ الإعدادات');}
 async function send(){
-  const input=$('#promptInput'), text=input.value.trim(); if(!text&&!state.image)return;
+  const input=$('#promptInput'), text=input.value.trim(); if(!text&&!state.image&&!state.file)return;
   await ensureChat(); input.value='';resize();$('#sendBtn').disabled=true;
-  const image=state.image; state.image=null; $('#imageInput').value=''; $('#attachmentPreview').classList.add('hidden');
-  const shown=text || '🖼️ صورة مرفقة'; addBubble('user',shown);
+  const image=state.image; const file=state.file; state.image=null; state.file=null; $('#imageInput').value=''; $('#attachmentPreview').classList.add('hidden');
+  const shown=text || (image?'🖼️ صورة مرفقة':`📎 ملف مرفق: ${state.file?.name||'ملف'}`); addBubble('user',shown);
   if(state.settings.localSave)await ZomaDB.addMessage(state.conversation.id,'user',text||'حلل الصورة.');
   const loading=addBubble('assistant','جاري التفكير…'); loading.classList.add('loading-message');
   try{
@@ -81,6 +80,14 @@ async function send(){
       if(image.size>10*1024*1024)throw new Error('حجم الصورة أكبر من 10MB');
       const fd=new FormData();fd.append('file',image);fd.append('prompt',text||'حلل الصورة واشرحها بالتفصيل وبالعربية.');
       const r=await fetch(state.settings.apiBase+'/api/analyze-image',{method:'POST',body:fd});const j=await safeJson(r);if(!r.ok)throw new Error(j.detail||'فشل تحليل الصورة');reply=j.reply||'لم يصل رد من الخادم.';
+    }else if(file){
+      if(file.size>10*1024*1024)throw new Error('حجم الملف أكبر من 10MB');
+      const textTypes=['text/','application/json','text/csv'];
+      if(textTypes.some(x=>file.type.startsWith(x)) || /\.(txt|md|json|csv)$/i.test(file.name)){
+        const content=await file.text();
+        const r=await fetch(state.settings.apiBase+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',text:(text||'اقرأ الملف ونفذ المطلوب.')+'\n\nمحتوى الملف:\n'+content.slice(0,30000)}]})});
+        const j=await safeJson(r);if(!r.ok)throw new Error(j.detail||'فشل قراءة الملف');reply=j.reply||'لم يصل رد من الخادم.';
+      }else{ reply='أقدر حاليًا تحليل الصور والملفات النصية مثل TXT وMD وJSON وCSV. ملفات PDF وWord تحتاج إضافة قارئ ملفات خاص.'; }
     }else{
       const msgs=state.settings.localSave?await ZomaDB.getMessages(state.conversation.id):[{role:'user',text}];
       const payload={messages:msgs.slice(-40).map(m=>({role:m.role==='assistant'?'assistant':'user',text:String(m.text).slice(0,30000)}))};
