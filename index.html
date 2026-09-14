@@ -75,6 +75,8 @@
   </div>
 </div>
 
+<div id="restoreChoiceModal" class="modal hidden" aria-hidden="true"><div class="action-menu-card backup-card"><button class="modal-close" id="closeRestoreChoice" aria-label="إغلاق">×</button><div class="modal-title"><div class="mini-logo">Z</div><div><h2>استعادة نسخة</h2><p>اختر نوع الملف الذي تريد استعادته.</p></div></div><div class="backup-choice"><button id="restoreFullBtn" class="backup-choice-btn"><b>📦 استعادة نسخة كاملة</b><small>المحادثات والملفات والصور والإعدادات.</small></button><button id="restoreConversationBtn" class="backup-choice-btn"><b>💬 استعادة محادثة فقط</b><small>محادثة واحدة بكل رسائلها ومرفقاتها.</small></button></div></div></div>
+
 <div id="backupModal" class="modal hidden" aria-hidden="true">
   <div class="action-menu-card backup-card">
     <button class="modal-close" id="closeBackupModal" aria-label="إغلاق">×</button>
@@ -116,40 +118,38 @@
   </div>
 </div>
 
-<div id="transferModal" class="modal hidden" aria-hidden="true">
-  <div class="action-menu-card transfer-card qr-transfer-card">
-    <button class="modal-close" id="closeTransferModal" aria-label="إغلاق">×</button>
-    <div class="modal-title"><div class="mini-logo">⇄</div><div><h2>النقل المباشر</h2><p>انقل محادثاتك بين جهازين باستخدام QR Code، بدون حساب أو قاعدة بيانات.</p></div></div>
-    <div class="transfer-choice" id="transferChoice"><p class="modal-help">اختر نوع النقل:</p>
-      <button class="backup-choice-btn" id="transferSendBtn"><b>📤 نقل نسخة كاملة</b><small>سيظهر QR متحرك على هذا الجهاز.</small></button>
-      <button class="backup-choice-btn" id="transferReceiveBtn"><b>📷 استقبال نسخة كاملة</b><small>افتح الكاميرا ووجّهها إلى QR الظاهر على الجهاز الآخر.</small></button>
-    </div>
-    <div id="transferSendPanel" class="hidden qr-panel">
-      <div class="transfer-status" id="transferSendStatus">جاري تجهيز المحادثات…</div>
-      <div class="qr-box"><canvas id="transferQrCanvas" width="360" height="360"></canvas></div>
-      <div class="transfer-progress"><div id="transferProgressBar"></div></div>
-      <div class="transfer-status compact" id="transferProgressText">0 / 0</div>
-      <p class="transfer-hint">اترك الشاشة مفتوحة ووجّه كاميرا الجهاز الآخر إلى رمز QR.</p>
-      <button class="transfer-back" id="transferSendStopBtn">إيقاف النقل والعودة</button>
-    </div>
-    <div id="transferReceivePanel" class="hidden qr-panel">
-      <div class="transfer-status" id="transferReceiveStatus">اضغط تشغيل الكاميرا ثم وجّهها إلى QR.</div>
-      <div class="camera-box"><video id="transferVideo" autoplay playsinline muted></video><div class="scan-frame"></div></div>
-      <canvas id="transferScanCanvas" class="hidden"></canvas>
-      <div class="transfer-progress"><div id="transferReceiveProgressBar"></div></div>
-      <div class="transfer-status compact" id="transferReceiveProgressText">0 / 0</div>
-      <div class="settings-actions"><button class="primary-btn" id="transferStartScanBtn">📷 تشغيل الكاميرا</button><button class="ghost-btn" id="transferStopScanBtn">إيقاف</button></div>
-      <button class="transfer-back" id="transferReceiveBackBtn">← رجوع</button>
+<div id="restoreModal" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card">
+    <button class="modal-close" id="closeRestoreModal" aria-label="إغلاق">×</button>
+    <div class="modal-title"><div class="mini-logo">↧</div><div><h2>استعادة نسخة</h2><p>اختار نوع البيانات التي تريد استعادتها.</p></div></div>
+    <div class="backup-choice">
+      <button id="restoreFullChoice" class="backup-choice-btn"><b>📦 نسخة كاملة</b><small>المحادثات + الصور + الملفات + كل بيانات ZOMA AI.</small></button>
+      <button id="restoreConversationChoice" class="backup-choice-btn"><b>💬 محادثة فقط</b><small>محادثة واحدة بكل الصور والملفات والرسائل الخاصة بها.</small></button>
     </div>
   </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+
+<div id="transferModal" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card transfer-card">
+    <button class="modal-close" id="closeTransferModal" aria-label="إغلاق">×</button>
+    <div class="modal-title"><div class="mini-logo">⇄</div><div><h2>النقل المباشر</h2><p>نقل سريع بكود من 6 أرقام — بدون كاميرا وبدون QR.</p></div></div>
+    <div class="transfer-choice" id="transferChoice">
+      <p class="modal-help">اختار ما تريد نقله:</p>
+      <button class="backup-choice-btn" id="transferSendBtn"><b>📤 نقل نسخة كاملة</b><small>ينقل كل المحادثات والصور والملفات.</small></button>
+      <button class="backup-choice-btn" id="transferReceiveBtn"><b>📥 استقبال بكود</b><small>اكتب كود النقل الذي ظهر على الجهاز الآخر.</small></button>
+    </div>
+    <div id="transferSendPanel" class="hidden qr-panel">
+      <div class="transfer-status" id="transferSendStatus">جاري إنشاء كود النقل…</div>
+      <div class="transfer-code-big" id="transferCodeValue">------</div>
+      <button class="primary-btn" id="copyTransferCode">نسخ الكود</button>
+      <p class="transfer-hint" id="transferHint">شارك الكود مع الجهاز الآخر. الكود يعمل مرة واحدة وينتهي بعد 10 دقائق.</p>
+      <button class="transfer-back" id="transferSendStopBtn">إغلاق</button>
+    </div>
+  </div>
+</div>
 <script src="config.js"></script>
 <script src="database.js"></script>
 <script src="backup.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="transfer.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

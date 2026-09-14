@@ -1,6 +1,6 @@
 const ZomaDB = (() => {
   const DB_NAME = 'zoma_ai_db';
-  const VERSION = 2;
+  const VERSION = 3;
   let dbPromise;
   const makeId = () => crypto.randomUUID();
 
@@ -75,7 +75,7 @@ const ZomaDB = (() => {
   }
 
   async function addMessage(conversationId, role, text, meta = {}) {
-    const m = { id: makeId(), conversationId, role, text, createdAt: Date.now(), ...meta };
+    const m = { id: makeId(), conversationId, role, text: String(text || ''), createdAt: Date.now(), ...meta };
     await request('messages', 'readwrite', s => s.put(m));
     const c = await getConversation(conversationId);
     if (c) {
@@ -89,6 +89,37 @@ const ZomaDB = (() => {
     const db = await open();
     return new Promise((resolve, reject) => {
       const req = db.transaction('messages', 'readonly').objectStore('messages').index('conversationId').getAll(conversationId);
+      req.onsuccess = () => resolve(req.result.sort((a,b) => a.createdAt-b.createdAt));
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function addAttachment(conversationId, file) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('تعذر حفظ الملف'));
+      reader.readAsDataURL(file);
+    });
+    const item = { id: makeId(), conversationId, name: file.name, type: file.type || 'application/octet-stream', size: file.size, dataUrl, createdAt: Date.now() };
+    await request('attachments', 'readwrite', s => s.put(item));
+    return item;
+  }
+
+  async function getAttachment(id) {
+    if (!id) return null;
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction('attachments', 'readonly').objectStore('attachments').get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function getAttachments(conversationId) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction('attachments', 'readonly').objectStore('attachments').index('conversationId').getAll(conversationId);
       req.onsuccess = () => resolve(req.result.sort((a,b) => a.createdAt-b.createdAt));
       req.onerror = () => reject(req.error);
     });
@@ -108,9 +139,7 @@ const ZomaDB = (() => {
     });
   }
 
-  async function clearAll() {
-    return request(['conversations','messages','attachments'], 'readwrite', stores => stores.forEach(s => s.clear()));
-  }
+  async function clearAll() { return request(['conversations','messages','attachments'], 'readwrite', stores => stores.forEach(s => s.clear())); }
 
   async function exportAll() {
     const db = await open();
@@ -119,12 +148,12 @@ const ZomaDB = (() => {
       req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
     });
     const [conversations,messages,attachments] = await Promise.all(['conversations','messages','attachments'].map(read));
-    return { format:'ZOMA_BACKUP', version:2, exportedAt:new Date().toISOString(), conversations, messages, attachments };
+    return { format:'ZOMA_BACKUP', version:3, exportedAt:new Date().toISOString(), conversations, messages, attachments };
   }
 
-  async function importAll(data) {
+  async function importAll(data, merge = false) {
     if (!data || data.format !== 'ZOMA_BACKUP') throw new Error('ملف النسخة غير صالح');
-    await clearAll();
+    if (!merge) await clearAll();
     const db = await open();
     return new Promise((resolve,reject) => {
       const tx = db.transaction(['conversations','messages','attachments'],'readwrite');
@@ -135,14 +164,30 @@ const ZomaDB = (() => {
     });
   }
 
-  async function togglePinned(id) {
-    const c = await getConversation(id); if (!c) return null;
-    c.pinned = !c.pinned; return updateConversation(c);
+  async function importConversation(data) {
+    if (!data || data.type !== 'zoma-conversation' || !data.conversation) throw new Error('ملف المحادثة غير صالح');
+    const oldId = data.conversation.id;
+    const created = await addConversation(data.conversation.title || 'محادثة مستعادة');
+    const attachmentMap = new Map();
+    for (const a of (data.attachments || [])) {
+      const id = makeId();
+      attachmentMap.set(a.id, id);
+      await request('attachments', 'readwrite', s => s.put({...a, id, conversationId: created.id}));
+    }
+    for (const m of (data.messages || [])) {
+      const meta = {...m};
+      delete meta.id; delete meta.conversationId;
+      if (meta.attachmentId && attachmentMap.has(meta.attachmentId)) meta.attachmentId = attachmentMap.get(meta.attachmentId);
+      await addMessage(created.id, m.role, m.text, meta);
+    }
+    created.pinned = !!data.conversation.pinned;
+    created.createdAt = data.conversation.createdAt || created.createdAt;
+    await updateConversation(created);
+    return created;
   }
 
-  async function requestPersistence() {
-    try { return await navigator.storage?.persist?.() || false; } catch { return false; }
-  }
+  async function togglePinned(id) { const c = await getConversation(id); if (!c) return null; c.pinned = !c.pinned; return updateConversation(c); }
+  async function requestPersistence() { try { return await navigator.storage?.persist?.() || false; } catch { return false; } }
 
-  return { addConversation, listConversations, getConversation, updateConversation, addMessage, getMessages, deleteConversation, clearAll, exportAll, importAll, togglePinned, requestPersistence };
+  return { addConversation, listConversations, getConversation, updateConversation, addMessage, getMessages, addAttachment, getAttachment, getAttachments, deleteConversation, clearAll, exportAll, importAll, importConversation, togglePinned, requestPersistence };
 })();
