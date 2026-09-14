@@ -1,4 +1,3 @@
-````javascript
 const state = {
   conversation: null,
   image: null,
@@ -468,4 +467,3 @@ $$('.suggestions button').forEach(b => {
     await openConversation(list[0].id);
   }
 })();
-````
