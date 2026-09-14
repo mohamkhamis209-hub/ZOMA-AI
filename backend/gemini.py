@@ -13,9 +13,9 @@ load_dotenv(ENV_FILE)
 
 # Gemini is reserved for image generation in ZOMA AI.
 MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.6-flash')
-TEXT_MODEL = os.getenv('ZOMA_TEXT_MODEL', 'openai-fast')
-TEXT_API_URL = os.getenv('ZOMA_TEXT_API_URL', 'https://gen.pollinations.ai/v1/chat/completions')
-TEXT_API_KEY = os.getenv('ZOMA_TEXT_API_KEY', '').strip()
+TEXT_MODEL = os.getenv('ZOMA_TEXT_MODEL', 'openrouter/free')
+TEXT_API_URL = os.getenv('ZOMA_TEXT_API_URL', 'https://openrouter.ai/api/v1/chat/completions')
+TEXT_API_KEY = (os.getenv('OPENROUTER_API_KEY') or os.getenv('ZOMA_TEXT_API_KEY') or '').strip()
 SYSTEM_INSTRUCTION = """You are ZOMA AI, a helpful general-purpose AI assistant.
 Answer clearly and naturally. Match the user's language; if the user writes Arabic, answer in Arabic.
 Do not claim to have performed actions you cannot perform. Keep answers organized and useful.
@@ -32,7 +32,7 @@ def _proxy_opener():
 
 def _text_api(messages: list[dict]) -> str:
     if not TEXT_API_KEY:
-        raise RuntimeError('محرك النص البديل غير مُعد بعد. أضف ZOMA_TEXT_API_KEY إلى ملف .env في PythonAnywhere.')
+        raise RuntimeError('محرك النص المجاني غير مُعد بعد. أضف OPENROUTER_API_KEY إلى ملف .env في PythonAnywhere.')
     body = {
         'model': TEXT_MODEL,
         'messages': [{'role': 'system', 'content': SYSTEM_INSTRUCTION}] + [
@@ -46,7 +46,12 @@ def _text_api(messages: list[dict]) -> str:
     req = urllib.request.Request(
         TEXT_API_URL,
         data=json.dumps(body).encode('utf-8'),
-        headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {TEXT_API_KEY}'},
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {TEXT_API_KEY}',
+            'HTTP-Referer': 'https://mohamkhamis209-hub.github.io/ZOMA-AI/',
+            'X-Title': 'ZOMA AI',
+        },
         method='POST',
     )
     try:
