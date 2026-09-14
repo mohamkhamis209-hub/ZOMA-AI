@@ -55,7 +55,9 @@
     <footer class="composer-area">
       <div id="attachmentPreview" class="attachment-preview hidden"></div>
       <form id="composer" class="composer">
-        <label class="attach-btn" title="إرفاق صورة أو ملف" aria-label="إرفاق صورة أو ملف">＋<input id="imageInput" type="file" accept="image/*,.pdf,.txt,.md,.json,.csv,.doc,.docx"></label>
+        <label class="attach-btn" title="إرفاق صورة أو ملف" aria-label="إرفاق صورة أو ملف">＋<input id="imageInput" type="file" accept="image/*,.pdf,.txt,.md,.json,.csv,.doc,.docx,.xlsx,.zip"></label>
+        <button id="fileToolBtn" class="tool-composer-btn" type="button" title="إنشاء PDF أو Word أو Excel أو ZIP" aria-label="إنشاء ملف">📄</button>
+        <button id="imageToolBtn" class="tool-composer-btn" type="button" title="إنشاء أو تعديل صورة" aria-label="إنشاء أو تعديل صورة">🖼️</button>
         <textarea id="promptInput" rows="1" maxlength="30000" placeholder="اكتب رسالتك إلى ZOMA AI…" aria-label="رسالتك"></textarea>
         <button id="sendBtn" class="send-btn" type="submit" aria-label="إرسال">➤</button>
       </form>
@@ -95,6 +97,34 @@
     <p class="modal-help">أدخل كلمة مرور لحماية النسخة ثم اضغط حفظ.</p>
     <input id="backupPasswordInput" class="backup-password-input" type="password" autocomplete="new-password" placeholder="كلمة المرور">
     <div class="settings-actions"><button class="primary-btn" id="savePasswordBackup">حفظ</button><button class="ghost-btn" id="cancelPasswordBackup">إلغاء</button></div>
+  </div>
+</div>
+
+
+<div id="fileCreateModal" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card tool-card">
+    <button class="modal-close" id="closeFileCreateModal" aria-label="إغلاق">×</button>
+    <div class="modal-title"><div class="mini-logo">📄</div><div><h2>إنشاء ملف</h2><p>اكتب ما تريد، وسيجهزه ZOMA AI داخل ملف قابل للتحميل.</p></div></div>
+    <label class="tool-label">نوع الملف</label>
+    <select id="createFileType" class="tool-input"><option value="pdf">PDF</option><option value="docx">Word</option><option value="xlsx">Excel</option><option value="zip">ZIP</option></select>
+    <label class="tool-label">اسم الملف (اختياري)</label>
+    <input id="createFileName" class="tool-input" maxlength="80" placeholder="مثال: ملخص الفيزياء">
+    <label class="tool-label">ماذا تريد داخل الملف؟</label>
+    <textarea id="createFilePrompt" class="tool-textarea" rows="6" placeholder="مثال: اعمل ملخصًا مرتبًا لدرس قوانين نيوتن مع العناوين والأمثلة."></textarea>
+    <button id="createFileSubmit" class="primary-btn tool-submit">إنشاء الملف</button>
+  </div>
+</div>
+
+<div id="imageToolModal" class="modal hidden" aria-hidden="true">
+  <div class="action-menu-card tool-card">
+    <button class="modal-close" id="closeImageToolModal" aria-label="إغلاق">×</button>
+    <div class="modal-title"><div class="mini-logo">🖼️</div><div><h2>إنشاء أو تعديل صورة</h2><p>اكتب وصف الصورة، أو ارفع صورة لتعديلها.</p></div></div>
+    <label class="tool-label">الصورة (اختياري — للتعديل)</label>
+    <input id="imageToolInput" class="tool-input-file" type="file" accept="image/*">
+    <div id="imageToolPreview" class="tool-image-preview hidden"></div>
+    <label class="tool-label">طلبك</label>
+    <textarea id="imageToolPrompt" class="tool-textarea" rows="5" placeholder="مثال: غيّر الخلفية إلى خلفية بيضاء وأضف إضاءة احترافية."></textarea>
+    <button id="generateImageSubmit" class="primary-btn tool-submit">إنشاء الصورة</button>
   </div>
 </div>
 
