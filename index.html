@@ -22,7 +22,7 @@
     <div class="sidebar-bottom">
       <button class="side-btn" id="backupBtn"><span>↥</span> النسخ الاحتياطي</button>
       <button class="side-btn" id="transferBtn"><span>⇄</span> النقل المباشر</button>
-      <label class="side-btn file-label"><span>↧</span> استعادة نسخة<input id="restoreInput" type="file" accept=".zoma,application/octet-stream,application/json"></label>
+      <button class="side-btn" id="restoreBtn"><span>↧</span> استعادة نسخة</button><input id="restoreInput" type="file" accept=".zoma,application/octet-stream,application/json" hidden>
       <button class="side-btn" id="settingsBtn"><span>⚙</span> الإعدادات</button>
     </div>
   </aside>
@@ -32,7 +32,7 @@
       <button class="icon-btn mobile-only" id="menuBtn" aria-label="القائمة">☰</button>
       <div class="model-pill"><span class="status-dot" id="statusDot"></span><div><b>ZOMA AI</b></div></div>
       <div class="top-actions">
-        <button class="icon-btn" id="clearBtn" title="حذف المحادثة الحالية" aria-label="حذف المحادثة">⌫</button>
+        
       </div>
     </header>
 
@@ -70,7 +70,7 @@
     <h3 id="conversationMenuTitle">خيارات المحادثة</h3>
     <div class="action-menu-buttons">
       <button id="menuPinBtn" class="action-btn">★ <span>تثبيت المحادثة</span></button>
-      <button id="menuDeleteBtn" class="action-btn danger">⌫ <span>حذف المحادثة</span></button>
+      <button id="menuTransferBtn" class="action-btn">⇄ <span>نقل المحادثة فقط</span></button><button id="menuDownloadBtn" class="action-btn">⇩ <span>تحميل المحادثة فقط</span></button><button id="menuDeleteBtn" class="action-btn danger">⌫ <span>حذف المحادثة</span></button>
     </div>
   </div>
 </div>
@@ -120,9 +120,9 @@
   <div class="action-menu-card transfer-card qr-transfer-card">
     <button class="modal-close" id="closeTransferModal" aria-label="إغلاق">×</button>
     <div class="modal-title"><div class="mini-logo">⇄</div><div><h2>النقل المباشر</h2><p>انقل محادثاتك بين جهازين باستخدام QR Code، بدون حساب أو قاعدة بيانات.</p></div></div>
-    <div class="transfer-choice" id="transferChoice">
-      <button class="backup-choice-btn" id="transferSendBtn"><b>📤 إرسال إلى جهاز آخر</b><small>سيظهر QR متحرك على هذا الجهاز.</small></button>
-      <button class="backup-choice-btn" id="transferReceiveBtn"><b>📷 استقبال من جهاز آخر</b><small>افتح الكاميرا ووجّهها إلى QR الظاهر على الجهاز الآخر.</small></button>
+    <div class="transfer-choice" id="transferChoice"><p class="modal-help">اختر نوع النقل:</p>
+      <button class="backup-choice-btn" id="transferSendBtn"><b>📤 نقل نسخة كاملة</b><small>سيظهر QR متحرك على هذا الجهاز.</small></button>
+      <button class="backup-choice-btn" id="transferReceiveBtn"><b>📷 استقبال نسخة كاملة</b><small>افتح الكاميرا ووجّهها إلى QR الظاهر على الجهاز الآخر.</small></button>
     </div>
     <div id="transferSendPanel" class="hidden qr-panel">
       <div class="transfer-status" id="transferSendStatus">جاري تجهيز المحادثات…</div>

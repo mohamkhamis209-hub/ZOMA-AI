@@ -71,7 +71,7 @@ async function send(){
   const input=$('#promptInput'), text=input.value.trim(); if(!text&&!state.image&&!state.file)return;
   await ensureChat(); input.value='';resize();$('#sendBtn').disabled=true;
   const image=state.image; const file=state.file; state.image=null; state.file=null; $('#imageInput').value=''; $('#attachmentPreview').classList.add('hidden');
-  const shown=text || (image?'🖼️ صورة مرفقة':`📎 ملف مرفق: ${state.file?.name||'ملف'}`); addBubble('user',shown);
+  const shown=text || (image?'🖼️ صورة مرفقة':`📎 ملف مرفق: ${file?.name||'ملف'}`); addBubble('user',shown);
   if(state.settings.localSave)await ZomaDB.addMessage(state.conversation.id,'user',text||'حلل الصورة.');
   const loading=addBubble('assistant','جاري التفكير…'); loading.classList.add('loading-message');
   try{
@@ -110,7 +110,7 @@ async function downloadBackup(password=''){
   try { await ZomaBackup.download(password); toast('تم إنشاء النسخة الاحتياطية'); }
   catch(e){ toast(e.message||'تعذر إنشاء النسخة'); }
 }
-async function restore(file){try{if(!confirm('استعادة النسخة ستستبدل المحادثات المحلية الحالية. هل تريد المتابعة؟'))return;await ZomaBackup.restore(file);state.conversation=null;$('#messages').innerHTML='';$('#welcome').classList.remove('hidden');await loadConversations();toast('تمت الاستعادة بنجاح')}catch(e){toast(e.message||'فشل الاستعادة')}}
+async function restore(file){try{if(!file)return; if(!confirm('استعادة النسخة ستضيف البيانات إلى الجهاز الحالي. هل تريد المتابعة؟'))return;await ZomaBackup.restore(file);state.conversation=null;$('#messages').innerHTML='';$('#welcome').classList.remove('hidden');await loadConversations();toast('تمت الاستعادة بنجاح')}catch(e){toast(e.message||'فشل الاستعادة')}}
 function setAttachment(file){
   state.image=null; state.file=null;
   if(!file){$('#attachmentPreview').classList.add('hidden');return;}
@@ -133,17 +133,21 @@ $('#savePasswordBackup').onclick=async()=>{const p=$('#backupPasswordInput').val
 $('#cancelPasswordBackup').onclick=()=>{$('#passwordModal').classList.add('hidden');$('#passwordModal').setAttribute('aria-hidden','true');};
 $('#closeBackupModal').onclick=closeBackupModal;
 $('#closePasswordModal').onclick=()=>$('#cancelPasswordBackup').click();
-$('#restoreInput').onchange=e=>{if(e.target.files[0])restore(e.target.files[0]);e.target.value='';};
+$('#restoreInput').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return; if(window.__restoreMode==='conversation'){try{const data=JSON.parse(await f.text());if(data.type!=='zoma-conversation')throw new Error('هذا الملف ليس محادثة منفردة');const c=data.conversation;const created=await ZomaDB.addConversation(c.title||'محادثة مستعادة');for(const m of (data.messages||[]))await ZomaDB.addMessage(created.id,m.role,m.text);await loadConversations();toast('تمت استعادة المحادثة');}catch(err){toast(err.message||'فشل استعادة المحادثة');}}else await restore(f);};
 $('#settingsBtn').onclick=()=>{loadSettings();$('#settingsModal').classList.remove('hidden');$('#settingsModal').setAttribute('aria-hidden','false');};
 $('#closeSettings').onclick=()=>{$('#settingsModal').classList.add('hidden');$('#settingsModal').setAttribute('aria-hidden','true');};
 $('#saveSettings').onclick=saveSettings;
 $('#themeToggle').onclick=()=>setTheme(!state.settings.dark); $('#localSaveRow').onclick=()=>setLocalSave(!state.settings.localSave);
 $('#searchInput').oninput=e=>loadConversations(e.target.value);
-$('#clearBtn').onclick=async()=>{if(state.conversation)await deleteConversation(state.conversation.id);};
+
 $('#menuBtn').onclick=()=>$('#sidebar').classList.add('open'); $('#closeSidebar').onclick=()=>$('#sidebar').classList.remove('open');
 $('#closeConversationMenu').onclick=closeConversationMenu;
 $('#menuPinBtn').onclick=async()=>{if(!state.menuConversation)return;await ZomaDB.togglePinned(state.menuConversation.id);closeConversationMenu();await loadConversations();toast('تم تحديث التثبيت');};
 $('#menuDeleteBtn').onclick=async()=>{if(!state.menuConversation)return;const id=state.menuConversation.id;closeConversationMenu();await deleteConversation(id);};
+async function exportConversationOnly(c){const messages=await ZomaDB.getMessages(c.id);const blob=new Blob([JSON.stringify({type:'zoma-conversation',version:1,conversation:c,messages},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='zoma-conversation-'+c.id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+$('#menuDownloadBtn').onclick=async()=>{if(!state.menuConversation)return;const c=state.menuConversation;closeConversationMenu();await exportConversationOnly(c);toast('تم تحميل المحادثة');};
+$('#menuTransferBtn').onclick=async()=>{if(!state.menuConversation)return;const c=state.menuConversation;closeConversationMenu();openTransfer();$('#transferChoice').classList.add('hidden');$('#transferSendPanel').classList.remove('hidden');$('#transferSendStatus').textContent='جاري تجهيز المحادثة…';try{const messages=await ZomaDB.getMessages(c.id);const meta=await ZomaTransfer.startSender({type:'zoma-conversation',version:1,conversation:c,messages});$('#transferSendStatus').textContent='جاهز — امسح QR من الجهاز الآخر.';$('#transferProgressText').textContent='1 / '+meta.total;}catch(e){$('#transferSendStatus').textContent=e.message||'تعذر تجهيز النقل';}};
+$('#restoreBtn').onclick=()=>{const choice=confirm('اضغط موافق لاستعادة نسخة كاملة، أو إلغاء لاستعادة محادثة فقط.');window.__restoreMode=choice?'full':'conversation';$('#restoreInput').click();};
 $$('.suggestions button').forEach(b=>b.onclick=()=>{$('#promptInput').value=b.dataset.prompt;resize();$('#promptInput').focus();});
 
 let transferMode='';
