@@ -313,7 +313,6 @@ function loadSettings() {
     }
   } catch {}
 
-  // إذا لم يكن هناك عنوان محفوظ، استخدم عنوان config.js
   if (!state.settings.apiBase) {
     state.settings.apiBase =
       window.ZOMA_CONFIG?.API_BASE_URL ||
