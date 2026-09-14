@@ -50,15 +50,28 @@ def api_chat(payload: ChatRequest):
     try:
         answer = chat([m.model_dump() for m in payload.messages])
         return {"ok": True, "reply": answer, "model": MODEL}
-    except HTTPException:
-        raise
-    except Exception as exc:
-    print("ZOMA CHAT ERROR:", repr(exc), flush=True)
-    raise HTTPException(
-        status_code=502,
-        detail=f"ZOMA CHAT ERROR: {type(exc).__name__}: {exc}"
-    ) from exc
 
+    except HTTPException as exc:
+        print(
+            "ZOMA HTTP ERROR:",
+            exc.status_code,
+            exc.detail,
+            flush=True
+        )
+        raise
+
+    except Exception as exc:
+        print(
+            "ZOMA CHAT ERROR:",
+            type(exc).__name__,
+            repr(exc),
+            flush=True
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="ZOMA CHAT INTERNAL ERROR"
+        ) from exc
 @app.post("/api/analyze-image")
 async def analyze_image(file: UploadFile = File(...), prompt: str = Form("حلل الصورة واشرحها بالتفصيل وبالعربية.")):
     content_type = file.content_type or mimetypes.guess_type(file.filename or "")[0] or ""
