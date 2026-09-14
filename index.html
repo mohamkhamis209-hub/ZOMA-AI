@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -11,14 +12,33 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><div class="brand-mark">Z</div><div><strong>ZOMA</strong><span>AI</span></div></div>
+      <div class="brand">
+        <div class="brand-mark">Z</div>
+        <div>
+          <strong>ZOMA</strong>
+          <span>AI</span>
+        </div>
+      </div>
+
       <button class="new-chat" id="newChatBtn">＋ محادثة جديدة</button>
+
       <div class="sidebar-title">المحادثات</div>
-      <div class="search-wrap"><input id="searchInput" type="search" placeholder="ابحث في المحادثات"><span>⌕</span></div>
+
+      <div class="search-wrap">
+        <input id="searchInput" type="search" placeholder="ابحث في المحادثات">
+        <span>⌕</span>
+      </div>
+
       <div id="conversationList" class="conversation-list"></div>
+
       <div class="sidebar-bottom">
         <button class="side-btn" id="backupBtn">⬇ النسخ الاحتياطي</button>
-        <label class="side-btn file-label">⬆ استعادة نسخة<input id="restoreInput" type="file" accept=".zoma,application/json"></label>
+
+        <label class="side-btn file-label">
+          ⬆ استعادة نسخة
+          <input id="restoreInput" type="file" accept=".zoma,application/json">
+        </label>
+
         <button class="side-btn" id="settingsBtn">⚙ الإعدادات</button>
       </div>
     </aside>
@@ -26,53 +46,127 @@
     <main class="main">
       <header class="topbar">
         <button class="icon-btn mobile-only" id="menuBtn" aria-label="القائمة">☰</button>
-        <div class="model-pill"><span class="status-dot"></span><span>ZOMA AI</span><small>Gemini</small></div>
-        <div class="top-actions"><button class="icon-btn" id="clearBtn" title="مسح المحادثة">⌫</button></div>
+
+        <div class="model-pill">
+          <span class="status-dot"></span>
+          <span>ZOMA AI</span>
+          <small>Gemini</small>
+        </div>
+
+        <div class="top-actions">
+          <button class="icon-btn" id="clearBtn" title="مسح المحادثة">⌫</button>
+        </div>
       </header>
 
       <section class="chat-area" id="chatArea">
         <div id="welcome" class="welcome">
           <div class="welcome-logo">Z</div>
+
           <h1>أهلاً بك في <span>ZOMA AI</span></h1>
-          <p>مساعدك الذكي للكتابة، الدراسة، البرمجة، الصور والأفكار.</p>
+
+          <p>
+            مساعدك الذكي للكتابة، الدراسة، البرمجة، الصور والأفكار.
+          </p>
+
           <div class="suggestions">
-            <button data-prompt="اشرح لي درسًا بطريقة سهلة وخطوة بخطوة">📚 شرح دراسي</button>
-            <button data-prompt="ساعدني في كتابة فكرة مشروع بطريقة احترافية">💡 فكرة مشروع</button>
-            <button data-prompt="اكتب لي كود HTML/CSS/JavaScript كاملًا مع شرح بسيط">💻 برمجة</button>
-            <button data-prompt="ساعدني في تنظيم يومي ومذاكرتي">🗓️ تنظيم الوقت</button>
+            <button data-prompt="اشرح لي درسًا بطريقة سهلة وخطوة بخطوة">
+              📚 شرح دراسي
+            </button>
+
+            <button data-prompt="ساعدني في كتابة فكرة مشروع بطريقة احترافية">
+              💡 فكرة مشروع
+            </button>
+
+            <button data-prompt="اكتب لي كود HTML/CSS/JavaScript كاملًا مع شرح بسيط">
+              💻 برمجة
+            </button>
+
+            <button data-prompt="ساعدني في تنظيم يومي ومذاكرتي">
+              🗓️ تنظيم الوقت
+            </button>
           </div>
         </div>
+
         <div id="messages" class="messages"></div>
       </section>
 
       <footer class="composer-area">
         <div id="attachmentPreview" class="attachment-preview hidden"></div>
+
         <form id="composer" class="composer">
-          <label class="attach-btn" title="إرفاق صورة">＋<input id="imageInput" type="file" accept="image/*"></label>
-          <textarea id="promptInput" rows="1" placeholder="اكتب رسالتك إلى ZOMA AI..."></textarea>
-          <button id="sendBtn" class="send-btn" type="submit" aria-label="إرسال">➤</button>
+          <label class="attach-btn" title="إرفاق صورة">
+            ＋
+            <input id="imageInput" type="file" accept="image/*">
+          </label>
+
+          <textarea
+            id="promptInput"
+            rows="1"
+            placeholder="اكتب رسالتك إلى ZOMA AI..."
+          ></textarea>
+
+          <button
+            id="sendBtn"
+            class="send-btn"
+            type="submit"
+            aria-label="إرسال"
+          >
+            ➤
+          </button>
         </form>
-        <div class="composer-note">ZOMA AI قد يخطئ أحيانًا. راجع المعلومات المهمة.</div>
+
+        <div class="composer-note">
+          ZOMA AI قد يخطئ أحيانًا. راجع المعلومات المهمة.
+        </div>
       </footer>
     </main>
   </div>
+
   <div id="toast" class="toast"></div>
+
   <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
       <button class="modal-close" id="closeSettings">×</button>
+
       <h2>الإعدادات</h2>
-      <label>عنوان الخادم الخلفي
-        <input id="apiBaseInput" type="url" placeholder="http://127.0.0.1:8000">
+
+      <label>
+        عنوان الخادم الخلفي
+        <input
+          id="apiBaseInput"
+          type="url"
+          placeholder="https://mohamkhamis209.pythonanywhere.com"
+        >
       </label>
-      <label class="switch-row"><span>الوضع الداكن</span><input id="darkMode" type="checkbox" checked></label>
-      <label class="switch-row"><span>حفظ المحادثات محليًا</span><input id="localSave" type="checkbox" checked></label>
-      <button id="saveSettings" class="primary-btn">حفظ الإعدادات</button>
-      <p class="small-note">المحادثات محفوظة في IndexedDB على هذا الجهاز والمتصفح. استخدم النسخ الاحتياطي عند تغيير الجهاز.</p>
+
+      <label class="switch-row">
+        <span>الوضع الداكن</span>
+        <input id="darkMode" type="checkbox" checked>
+      </label>
+
+      <label class="switch-row">
+        <span>حفظ المحادثات محليًا</span>
+        <input id="localSave" type="checkbox" checked>
+      </label>
+
+      <button id="saveSettings" class="primary-btn">
+        حفظ الإعدادات
+      </button>
+
+      <p class="small-note">
+        المحادثات محفوظة في IndexedDB على هذا الجهاز والمتصفح.
+        استخدم النسخ الاحتياطي عند تغيير الجهاز.
+      </p>
     </div>
   </div>
+
+  <!-- ZOMA AI configuration -->
+  <script src="config.js"></script>
+
   <script src="database.js"></script>
   <script src="backup.js"></script>
   <script src="transfer.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
+```
