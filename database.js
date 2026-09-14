@@ -1,19 +1,148 @@
-const ZomaDB = (()=>{
-  const DB_NAME='zoma_ai_db'; const VERSION=1;
+const ZomaDB = (() => {
+  const DB_NAME = 'zoma_ai_db';
+  const VERSION = 2;
   let dbPromise;
-  function open(){if(dbPromise)return dbPromise;dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('conversations')){const s=db.createObjectStore('conversations',{keyPath:'id'});s.createIndex('updatedAt','updatedAt')}if(!db.objectStoreNames.contains('messages')){const s=db.createObjectStore('messages',{keyPath:'id'});s.createIndex('conversationId','conversationId')}if(!db.objectStoreNames.contains('attachments')){const s=db.createObjectStore('attachments',{keyPath:'id'});s.createIndex('conversationId','conversationId')}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});return dbPromise}
-  async function tx(store,mode,fn){const db=await open();return new Promise((resolve,reject)=>{const t=db.transaction(store,mode);const s=t.objectStore(store);let result;try{result=fn(s)}catch(e){reject(e);return}t.oncomplete=()=>resolve(result);t.onerror=()=>reject(t.error)})}
-  const id=()=>crypto.randomUUID();
-  async function addConversation(title='محادثة جديدة'){const now=Date.now();const c={id:id(),title,createdAt:now,updatedAt:now,pinned:false};await tx('conversations','readwrite',s=>s.put(c));return c}
-  async function listConversations(){return tx('conversations','readonly',s=>{const req=s.index('updatedAt').getAll();return new Promise(res=>{req.onsuccess=()=>res(req.result.sort((a,b)=>b.updatedAt-a.updatedAt));})})}
-  async function getConversation(id){return tx('conversations','readonly',s=>{const r=s.get(id);return new Promise(res=>{r.onsuccess=()=>res(r.result)})})}
-  async function updateConversation(c){c.updatedAt=Date.now();await tx('conversations','readwrite',s=>s.put(c))}
-  async function addMessage(conversationId,role,text,meta={}){const m={id:id(),conversationId,role,text,createdAt:Date.now(),...meta};await tx('messages','readwrite',s=>s.put(m));const c=await getConversation(conversationId);if(c){c.updatedAt=Date.now();if(role==='user'&&(!c.title||c.title==='محادثة جديدة'))c.title=text.replace(/\s+/g,' ').slice(0,45)||'محادثة جديدة';await updateConversation(c)}return m}
-  async function getMessages(conversationId){return tx('messages','readonly',s=>{const r=s.index('conversationId').getAll(conversationId);return new Promise(res=>{r.onsuccess=()=>res(r.result.sort((a,b)=>a.createdAt-b.createdAt))})})}
-  async function deleteConversation(conversationId){await tx('messages','readwrite',s=>{const r=s.index('conversationId').getAllKeys(conversationId);r.onsuccess=()=>r.result.forEach(k=>s.delete(k))});await tx('conversations','readwrite',s=>s.delete(conversationId));await tx('attachments','readwrite',s=>{const r=s.index('conversationId').getAllKeys(conversationId);r.onsuccess=()=>r.result.forEach(k=>s.delete(k))})}
-  async function clearAll(){const db=await open();return new Promise((resolve,reject)=>{const t=db.transaction(['conversations','messages','attachments'],'readwrite');['conversations','messages','attachments'].forEach(x=>t.objectStore(x).clear());t.oncomplete=resolve;t.onerror=()=>reject(t.error)})}
-  async function exportAll(){const [conversations,messages,attachments]=await Promise.all([tx('conversations','readonly',s=>new Promise(r=>{const q=s.getAll();q.onsuccess=()=>r(q.result)})),tx('messages','readonly',s=>new Promise(r=>{const q=s.getAll();q.onsuccess=()=>r(q.result)})),tx('attachments','readonly',s=>new Promise(r=>{const q=s.getAll();q.onsuccess=()=>r(q.result)}))]);return {format:'ZOMA_BACKUP',version:1,exportedAt:new Date().toISOString(),conversations,messages,attachments}}
-  async function importAll(data){if(!data||data.format!=='ZOMA_BACKUP')throw new Error('ملف النسخة غير صالح');await clearAll();const db=await open();return new Promise((resolve,reject)=>{const t=db.transaction(['conversations','messages','attachments'],'readwrite');data.conversations?.forEach(x=>t.objectStore('conversations').put(x));data.messages?.forEach(x=>t.objectStore('messages').put(x));data.attachments?.forEach(x=>t.objectStore('attachments').put(x));t.oncomplete=resolve;t.onerror=()=>reject(t.error)})}
-  async function requestPersistence(){try{return await navigator.storage?.persist?.()||false}catch{return false}}
-  return {addConversation,listConversations,getConversation,updateConversation,addMessage,getMessages,deleteConversation,clearAll,exportAll,importAll,requestPersistence};
+  const makeId = () => crypto.randomUUID();
+
+  function open() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('conversations')) {
+          const s = db.createObjectStore('conversations', { keyPath: 'id' });
+          s.createIndex('updatedAt', 'updatedAt');
+        }
+        if (!db.objectStoreNames.contains('messages')) {
+          const s = db.createObjectStore('messages', { keyPath: 'id' });
+          s.createIndex('conversationId', 'conversationId');
+        }
+        if (!db.objectStoreNames.contains('attachments')) {
+          const s = db.createObjectStore('attachments', { keyPath: 'id' });
+          s.createIndex('conversationId', 'conversationId');
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  async function request(storeNames, mode, work) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeNames, mode);
+      const stores = Array.isArray(storeNames) ? storeNames.map(n => tx.objectStore(n)) : tx.objectStore(storeNames);
+      let result;
+      try { result = work(stores, tx); } catch (e) { reject(e); return; }
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error || new Error('فشلت عملية قاعدة البيانات'));
+      tx.onabort = () => reject(tx.error || new Error('تم إلغاء عملية قاعدة البيانات'));
+    });
+  }
+
+  async function addConversation(title = 'محادثة جديدة') {
+    const now = Date.now();
+    const c = { id: makeId(), title, createdAt: now, updatedAt: now, pinned: false };
+    await request('conversations', 'readwrite', s => s.put(c));
+    return c;
+  }
+
+  async function listConversations() {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('conversations', 'readonly');
+      const req = tx.objectStore('conversations').getAll();
+      req.onsuccess = () => resolve(req.result.sort((a,b) => (b.pinned-a.pinned) || (b.updatedAt-a.updatedAt)));
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function getConversation(id) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction('conversations', 'readonly').objectStore('conversations').get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function updateConversation(c) {
+    c.updatedAt = Date.now();
+    await request('conversations', 'readwrite', s => s.put(c));
+    return c;
+  }
+
+  async function addMessage(conversationId, role, text, meta = {}) {
+    const m = { id: makeId(), conversationId, role, text, createdAt: Date.now(), ...meta };
+    await request('messages', 'readwrite', s => s.put(m));
+    const c = await getConversation(conversationId);
+    if (c) {
+      if (role === 'user' && (!c.title || c.title === 'محادثة جديدة')) c.title = String(text || '').replace(/\s+/g, ' ').slice(0, 48) || 'محادثة جديدة';
+      await updateConversation(c);
+    }
+    return m;
+  }
+
+  async function getMessages(conversationId) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction('messages', 'readonly').objectStore('messages').index('conversationId').getAll(conversationId);
+      req.onsuccess = () => resolve(req.result.sort((a,b) => a.createdAt-b.createdAt));
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function deleteConversation(conversationId) {
+    const db = await open();
+    const messages = await getMessages(conversationId);
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['conversations','messages','attachments'], 'readwrite');
+      tx.objectStore('conversations').delete(conversationId);
+      for (const m of messages) tx.objectStore('messages').delete(m.id);
+      const aReq = tx.objectStore('attachments').index('conversationId').getAllKeys(conversationId);
+      aReq.onsuccess = () => aReq.result.forEach(k => tx.objectStore('attachments').delete(k));
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function clearAll() {
+    return request(['conversations','messages','attachments'], 'readwrite', stores => stores.forEach(s => s.clear()));
+  }
+
+  async function exportAll() {
+    const db = await open();
+    const read = name => new Promise((resolve,reject) => {
+      const req = db.transaction(name,'readonly').objectStore(name).getAll();
+      req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+    });
+    const [conversations,messages,attachments] = await Promise.all(['conversations','messages','attachments'].map(read));
+    return { format:'ZOMA_BACKUP', version:2, exportedAt:new Date().toISOString(), conversations, messages, attachments };
+  }
+
+  async function importAll(data) {
+    if (!data || data.format !== 'ZOMA_BACKUP') throw new Error('ملف النسخة غير صالح');
+    await clearAll();
+    const db = await open();
+    return new Promise((resolve,reject) => {
+      const tx = db.transaction(['conversations','messages','attachments'],'readwrite');
+      (data.conversations || []).forEach(x => tx.objectStore('conversations').put(x));
+      (data.messages || []).forEach(x => tx.objectStore('messages').put(x));
+      (data.attachments || []).forEach(x => tx.objectStore('attachments').put(x));
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function togglePinned(id) {
+    const c = await getConversation(id); if (!c) return null;
+    c.pinned = !c.pinned; return updateConversation(c);
+  }
+
+  async function requestPersistence() {
+    try { return await navigator.storage?.persist?.() || false; } catch { return false; }
+  }
+
+  return { addConversation, listConversations, getConversation, updateConversation, addMessage, getMessages, deleteConversation, clearAll, exportAll, importAll, togglePinned, requestPersistence };
 })();
