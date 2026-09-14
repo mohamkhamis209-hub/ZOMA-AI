@@ -55,12 +55,16 @@
     <footer class="composer-area">
       <div id="attachmentPreview" class="attachment-preview hidden"></div>
       <form id="composer" class="composer">
-        <label class="attach-btn" title="إرفاق صورة أو ملف" aria-label="إرفاق صورة أو ملف">＋<input id="imageInput" type="file" accept="image/*,.pdf,.txt,.md,.json,.csv,.doc,.docx,.xlsx,.zip"></label>
-        <button id="fileToolBtn" class="tool-composer-btn" type="button" title="إنشاء PDF أو Word أو Excel أو ZIP" aria-label="إنشاء ملف">📄</button>
-        <button id="imageToolBtn" class="tool-composer-btn" type="button" title="إنشاء أو تعديل صورة" aria-label="إنشاء أو تعديل صورة">🖼️</button>
+        <button id="plusToolBtn" class="plus-tool-btn" type="button" title="الأدوات" aria-label="فتح أدوات ZOMA">＋</button>
         <textarea id="promptInput" rows="1" maxlength="30000" placeholder="اكتب رسالتك إلى ZOMA AI…" aria-label="رسالتك"></textarea>
         <button id="sendBtn" class="send-btn" type="submit" aria-label="إرسال">➤</button>
       </form>
+      <div id="composerTools" class="composer-tools hidden" aria-hidden="true">
+        <button id="uploadToolBtn" type="button" class="composer-tool-item"><span>📎</span><div><b>رفع صورة أو ملف</b><small>إرفاقه بالمحادثة</small></div></button>
+        <button id="imageToolBtn" type="button" class="composer-tool-item"><span>🎨</span><div><b>إنشاء صورة</b><small>توليد أو تعديل صورة</small></div></button>
+        <button id="fileToolBtn" type="button" class="composer-tool-item"><span>📄</span><div><b>إنشاء ملف</b><small>PDF · Word · Excel · ZIP</small></div></button>
+      </div>
+      <input id="imageInput" type="file" accept="image/*,.pdf,.txt,.md,.json,.csv,.doc,.docx,.xlsx,.zip" hidden>
       <div class="composer-note">قد يخطئ الذكاء الاصطناعي أحيانًا. راجع المعلومات المهمة قبل الاعتماد عليها.</div>
     </footer>
   </main>

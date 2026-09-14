@@ -7,6 +7,7 @@ import re
 import secrets
 import time
 import urllib.request
+import urllib.parse
 import urllib.error
 import zipfile
 from pathlib import Path
@@ -22,7 +23,7 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
-from gemini import chat, MODEL
+from gemini import chat, MODEL, TEXT_MODEL
 from security import require_api_key, MAX_TEXT_CHARS
 
 app = FastAPI(title='ZOMA AI API', version='1.3.0')
@@ -47,6 +48,19 @@ class FileCreateRequest(BaseModel):
     file_type: str = Field(pattern='^(pdf|docx|xlsx|zip)$')
     prompt: str = Field(min_length=1, max_length=30000)
     filename: str | None = Field(default=None, max_length=120)
+
+class ResearchRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=30000)
+
+def is_quota_error_text(text: str) -> bool:
+    t = (text or '').lower()
+    return any(x in t for x in ('429', 'resource_exhausted', 'quota exceeded', 'quotaexceeded', 'rate limit'))
+
+def friendly_image_error(exc: Exception) -> HTTPException:
+    raw = str(exc)
+    if is_quota_error_text(raw):
+        return HTTPException(status_code=429, detail='حصة توليد الصور المتاحة حاليًا انتهت. الدردشة والملفات ما زالت تعمل بشكل طبيعي. جرّب توليد الصورة مرة أخرى عند توفر الحصة.')
+    return HTTPException(status_code=502, detail=f'تعذر إنشاء/تعديل الصورة الآن: {raw[:900]}')
 
 
 def cleanup_transfers():
@@ -88,6 +102,8 @@ def image_interaction(prompt: str, image_bytes: bytes | None = None, mime_type: 
             payload = json.loads(response.read().decode('utf-8'))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode('utf-8', 'ignore')[:1500]
+        if exc.code == 429 or is_quota_error_text(detail):
+            raise friendly_image_error(RuntimeError(detail)) from exc
         raise HTTPException(status_code=502, detail=f'خدمة الصور رفضت الطلب: {detail}') from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f'تعذر الاتصال بخدمة الصور: {type(exc).__name__}') from exc
@@ -123,11 +139,40 @@ def image_interaction(prompt: str, image_bytes: bytes | None = None, mime_type: 
 
 @app.get('/')
 def root():
-    return {'name': 'ZOMA AI API', 'status': 'ok', 'model': MODEL, 'imageModel': IMAGE_MODEL}
+    return {'name': 'ZOMA AI API', 'status': 'ok', 'model': MODEL, 'textModel': TEXT_MODEL, 'textEngine': 'external', 'imageModel': IMAGE_MODEL}
 
 @app.get('/api/health')
 def health():
-    return {'ok': True, 'gemini_configured': bool(os.getenv('GEMINI_API_KEY', '').strip()), 'model': MODEL, 'imageModel': IMAGE_MODEL}
+    return {'ok': True, 'gemini_configured': bool(os.getenv('GEMINI_API_KEY', '').strip()), 'model': MODEL, 'textModel': TEXT_MODEL, 'textEngine': 'external', 'imageModel': IMAGE_MODEL}
+
+def web_search(query: str, limit: int = 8) -> list[dict[str, str]]:
+    """Keyless web search using DuckDuckGo's HTML results. No Gemini request is made."""
+    q = urllib.parse.quote_plus(query[:1000])
+    url = f'https://html.duckduckgo.com/html/?q={q}&kl=eg-ar'
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 ZOMA-AI/1.0'}, method='GET')
+    try:
+        with proxy_opener().open(req, timeout=30) as response:
+            html = response.read().decode('utf-8', 'ignore')
+    except Exception as exc:
+        raise RuntimeError(f'تعذر الوصول إلى محرك البحث: {type(exc).__name__}') from exc
+    results = []
+    for m in re.finditer(r'<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html, re.I | re.S):
+        href = m.group(1)
+        title = re.sub(r'<[^>]+>', '', m.group(2))
+        title = re.sub(r'\s+', ' ', title).strip()
+        if href.startswith('//'):
+            href = 'https:' + href
+        if href.startswith('/l/?'):
+            mm = re.search(r'uddg=([^&]+)', href)
+            if mm:
+                from urllib.parse import unquote
+                href = unquote(mm.group(1))
+        if href.startswith('http') and title:
+            results.append({'title': title, 'url': href})
+        if len(results) >= limit:
+            break
+    return results
+
 
 @app.post('/api/chat')
 def api_chat(payload: ChatRequest):
@@ -217,88 +262,27 @@ async def generate_image(prompt: str = Form(...), file: UploadFile | None = File
         if not mime.startswith('image/'):
             raise HTTPException(status_code=415, detail='الملف المرفوع يجب أن يكون صورة.')
         prompt = 'عدّل الصورة المرفقة حسب طلب المستخدم. حافظ على العناصر غير المطلوبة للتغيير، واجعل النتيجة طبيعية وعالية الجودة. طلب المستخدم: ' + prompt
-    result = image_interaction(prompt, image_bytes, mime)
+    try:
+        result = image_interaction(prompt, image_bytes, mime)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise friendly_image_error(exc) from exc
     return {'ok': True, 'data': result['data'], 'mime_type': result['mime_type'], 'text': result['text'], 'model': IMAGE_MODEL, 'edited': image_bytes is not None}
 
 
 def generate_file_content(prompt: str) -> str:
-    return chat([{'role': 'user', 'text': 'أنشئ محتوى جاهزًا ومنظمًا بناءً على الطلب التالي. لا تكتب مقدمات عن أنك نموذج ذكاء اصطناعي. استخدم العربية عند طلب المستخدم العربية. أعد المحتوى فقط.\n\n' + prompt[:MAX_TEXT_CHARS]}])
-
-
-def safe_filename(name: str | None, fallback: str) -> str:
-    raw = (name or fallback).strip()
-    raw = re.sub(r'[^\w\-\u0600-\u06FF .]', '_', raw).strip() or fallback
-    return raw[:80]
-
-
-def make_pdf(text: str) -> bytes:
-    from reportlab.lib.pagesizes import A4
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_RIGHT
-    try:
-        import arabic_reshaper
-        from bidi.algorithm import get_display
-        def shape(s): return get_display(arabic_reshaper.reshape(s))
-    except Exception:
-        def shape(s): return s
-    font_candidates = [
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
-    ]
-    font_path = next((p for p in font_candidates if os.path.exists(p)), None)
-    if not font_path:
-        raise RuntimeError('لم يتم العثور على خط Unicode لإنشاء PDF.')
-    pdfmetrics.registerFont(TTFont('ZomaUnicode', font_path))
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
-    styles = getSampleStyleSheet()
-    style = ParagraphStyle('ZomaArabic', parent=styles['Normal'], fontName='ZomaUnicode', fontSize=12, leading=20, alignment=TA_RIGHT, spaceAfter=8)
-    story = []
-    for para in text.split('\n'):
-        clean = para.strip()
-        if clean:
-            story.append(Paragraph(xml_escape(shape(clean)), style))
-        else:
-            story.append(Spacer(1, 7))
-    doc.build(story)
-    return buf.getvalue()
-
-
-def make_docx(text: str) -> bytes:
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    doc = Document()
-    for line in text.split('\n'):
-        p = doc.add_paragraph(line)
-        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    buf = io.BytesIO()
-    doc.save(buf)
-    return buf.getvalue()
-
-
-def make_xlsx(text: str) -> bytes:
-    from openpyxl import Workbook
-    wb = Workbook()
-    ws = wb.active
-    ws.title = 'ZOMA AI'
-    for row_no, line in enumerate(text.splitlines() or [''], 1):
-        ws.cell(row=row_no, column=1, value=line)
-    ws.column_dimensions['A'].width = 100
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()
-
-
-def make_zip(text: str, prompt: str) -> bytes:
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
-        z.writestr('zoma-content.txt', text)
-        z.writestr('README.txt', 'تم إنشاء هذا الملف بواسطة ZOMA AI.\n\nالطلب الأصلي:\n' + prompt[:5000])
-    return buf.getvalue()
+    # Search is performed separately and the alternative text engine writes the file.
+    results = web_search(prompt, 6)
+    source_text = '\n'.join([f"- {x['title']} — {x['url']}" for x in results])
+    instruction = (
+        'اكتب محتوى احترافيًا جاهزًا لملف بناءً على طلب المستخدم. '
+        'إذا كانت نتائج البحث موجودة فاستخدمها، ولا تخترع أرقامًا أو حقائق غير مدعومة. '
+        'نظّم العناوين والفقرات والقوائم بوضوح. أجب بالعربية إذا كان الطلب بالعربية. '
+        'ضع قسمًا مختصرًا للمصادر في النهاية.\n\n'
+        f'الطلب:\n{prompt[:MAX_TEXT_CHARS]}\n\nنتائج البحث:\n{source_text or "لا توجد نتائج بحث متاحة."}'
+    )
+    return chat([{'role': 'user', 'text': instruction}])
 
 @app.post('/api/create-file')
 def create_file(req: FileCreateRequest):
